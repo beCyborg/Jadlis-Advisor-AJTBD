@@ -1,5 +1,6 @@
 ---
-name: ajtbd
+name: advisor
+user-invocable: true
 description: |
   Product advisor using Zamesin's Advanced Jobs To Be Done (AJTBD) methodology v13.
   This skill should be used when the user asks about product strategy, customer segmentation,
@@ -29,7 +30,7 @@ Before recommending, gather context. Ask these questions (adapt to what user alr
    - **Growth**: "Product stopped growing, old approaches fail"
    - **Differentiation**: "Our product looks like every competitor"
 3. **Context done**: Any research conducted? Known segments? Existing hypotheses?
-4. **Saved context**: Check if `.claude/jadlis-advisor-ajtbd.local.md` exists. If yes, read it and confirm with user whether context is still valid.
+4. **Saved context**: Check if `.claude/ajtbd.local.md` exists. If yes, read it and confirm with user whether context is still valid.
 
 Do NOT skip context gathering. Without knowing the business task, you cannot select the right mechanics.
 
@@ -148,9 +149,13 @@ On EVERY recommendation, follow this protocol:
 | Understand AJTBD terminology | `references/terminology.md` | — |
 | See real examples / case studies | `references/examples.md` | — |
 
+## Reading References
+
+When reading reference files, use Grep to find the relevant section first, then Read with offset/limit. Do not attempt to read entire reference files in one call — some exceed 50KB.
+
 ## Context Persistence
 
-After working with the user, save their product context for future sessions. Write to `.claude/jadlis-advisor-ajtbd.local.md`:
+After working with the user, save their product context for future sessions. Write to `.claude/ajtbd.local.md`:
 
 ```yaml
 ---
