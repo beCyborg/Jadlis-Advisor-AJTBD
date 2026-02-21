@@ -1,5 +1,8 @@
 {
-  "name": "ajtbd",
+  "name": "jadlis-advisor-ajtbd",
   "description": "AJTBD product advisor — interactive guide through Zamesin's Advanced Jobs To Be Done methodology v13",
-  "version": "1.1.0"
+  "version": "1.1.0",
+  "author": { "name": "beCyborg" },
+  "repository": "https://github.com/beCyborg/Jadlis-Advisor-AJTBD",
+  "keywords": ["jtbd", "jobs-to-be-done", "product-strategy", "segmentation"]
 }
