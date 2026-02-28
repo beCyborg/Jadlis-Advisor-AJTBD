@@ -7,6 +7,7 @@ description: |
   job graph, JTBD, value creation, product launch, PMF, marketing packaging, conversion growth,
   interview methodology, or any product decision. Russian triggers: граф работ, сегментация,
   ценность продукта, запуск продукта, кастдев, ABCD сегментация, core job, big job.
+allowed-tools: mcp__plugin_supabase_supabase__execute_sql, mcp__plugin_supabase_supabase__list_projects
 ---
 
 # AJTBD Product Advisor
@@ -18,6 +19,90 @@ Provide procedural knowledge from Zamesin's AJTBD v13 for product decisions. Thi
 ## When to Use
 
 Once activated, determine the user's business task category before selecting mechanics. The advisor handles four paths: launching a new product, getting a product to sell, reigniting growth, and differentiating from competitors. Each path has a specific set of applicable mechanics and research directions.
+
+## Context Loading Protocol
+
+### Step 1: Get Project ID
+
+Call `mcp__plugin_supabase_supabase__list_projects` to get the active project. Store the `id` field as `PROJECT_ID`. All subsequent `execute_sql` calls pass `project_id: PROJECT_ID`.
+
+### Step 2: Execute SQL Queries
+
+Execute 5 SQL queries in order:
+
+```sql
+-- Query 1: User tier
+SELECT current_tier FROM user_tier WHERE id = 'singleton';
+```
+
+```sql
+-- Query 2a: Need scores for today
+SELECT n.id, n.name, ns.score, ns.period_start
+FROM needs n
+LEFT JOIN need_scores ns ON ns.need_id = n.id AND ns.period_start = CURRENT_DATE
+ORDER BY n.id;
+```
+
+If Query 2a returns empty scores (all NULL), fallback:
+
+```sql
+-- Query 2b: Most recent need scores (fallback)
+SELECT n.id, n.name, ns.score, ns.period_start
+FROM needs n
+LEFT JOIN need_scores ns ON ns.need_id = n.id
+  AND ns.period_start = (
+    SELECT MAX(period_start) FROM need_scores WHERE period_type = 'daily'
+  )
+ORDER BY n.id;
+```
+
+Note the date of the latest data when using fallback.
+
+```sql
+-- Query 3: Active and draft goals
+SELECT id, title, type, status, need_id, hypothesis, definition_of_done
+FROM goals
+WHERE status IN ('active', 'draft')
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+```sql
+-- Query 4: Active SWOT entries
+SELECT id, type, title, content, impact, status, need_ids
+FROM swot_entries
+WHERE status NOT IN ('ignored', 'accepted', 'goal_created')
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+```sql
+-- Query 5: Active habits
+SELECT id, name, identity, trigger, mvv, tier, is_active, need_id
+FROM habits
+WHERE is_active = true
+ORDER BY created_at DESC;
+```
+
+### Step 3: Read Local Context
+
+Read `.claude/ajtbd.local.md` via Read tool. This file is project-specific.
+
+### Step 4: Analyse Context
+
+Analyze through AJTBD lens:
+- Which needs have low scores (potential pain points relevant to product work)
+- Existing goals and their types — avoid duplicating with future proposals
+- SWOT entries that may indicate product opportunities or risks
+- User tier — determines recommendation depth
+
+### Step 5: Ask Methodology-Specific Questions
+
+Proceed to Context Gathering below.
+
+### Fallback
+
+If Supabase MCP is unavailable (tool call fails), continue as pure knowledge advisor. Inform the user: "Supabase MCP недоступен. Работаю в режиме чистых знаний — контекст не загружен автоматически. Опишите вашу текущую ситуацию."
 
 ## Context Gathering
 
@@ -152,6 +237,104 @@ On EVERY recommendation, follow this protocol:
 ## Reading References
 
 When reading reference files, use Grep to find the relevant section first, then Read with offset/limit. Do not attempt to read entire reference files in one call — some exceed 50KB.
+
+## Proposal Protocol
+
+1. Сформулировать рекомендацию на основе методологии
+2. Представить рекомендацию пользователю с полным обоснованием
+3. Записать в `advisor_proposals` через `execute_sql`:
+
+```sql
+INSERT INTO advisor_proposals (
+  advisor_name,
+  proposal_type,
+  title,
+  reasoning,
+  payload,
+  session_id,
+  session_context
+) VALUES (
+  'ajtbd',
+  '<proposal_type>',
+  '<title>',
+  '<reasoning>',
+  '<payload_json>'::jsonb,
+  '<session_uuid>',
+  '{
+    "date": "<YYYY-MM-DD>",
+    "tier": "<current_tier>",
+    "need_score": <float>,
+    "advisor_version": "1.2.0"
+  }'::jsonb
+)
+RETURNING id;
+```
+
+4. Сообщить пользователю: "Рекомендация сохранена как предложение [id]. Вы можете просмотреть и применить его в NeedsCore Dashboard."
+
+### session_id
+
+Генерировать один раз за сессию (UUID через `gen_random_uuid()` или клиентски). Все предложения одной сессии разделяют один `session_id`.
+
+### Payload Schemas
+
+**`goal` payload** (e.g., new product goal from JTBD analysis):
+```json
+{
+  "title": "Провести серию custdev-интервью с сегментом A",
+  "type": "drive",
+  "need_id": "5.1",
+  "hypothesis": "If we interview 10 users from segment A, then we validate the core job hypothesis, because past behavior data shows high engagement",
+  "definition_of_done": "10 интервью проведено, паттерны задокументированы, core job подтверждён или опровергнут"
+}
+```
+
+**`habit` payload** (e.g., regular research practice):
+```json
+{
+  "name": "Еженедельный custdev",
+  "identity": "I am a person who validates assumptions with real data",
+  "trigger": "After Monday standup I will schedule 2 custdev interviews",
+  "mvv": "Написать 1 вопрос для интервью",
+  "full_version": "Провести 2 custdev-интервью и записать выводы",
+  "frequency_days": 7,
+  "tier": "standard",
+  "hypothesis": "Regular custdev reduces false-job risk by maintaining fresh user data",
+  "need_id": "5.1",
+  "metric_id": "M05"
+}
+```
+
+**`swot_entry` payload** (e.g., product opportunity from market analysis):
+```json
+{
+  "type": "opportunity",
+  "title": "Незанятая ниша: интеграция с existing workflow",
+  "content": "Анализ job graph показывает, что ни один конкурент не покрывает связку core job → higher-level job. Потенциал для kill-a-job стратегии.",
+  "need_ids": ["5.1", "5.2"],
+  "impact": "high",
+  "source": "advisor_ajtbd"
+}
+```
+
+**`adjustment` payload** (e.g., refine existing goal based on new data):
+```json
+{
+  "target_table": "goals",
+  "target_id": "<UUID>",
+  "changes": {
+    "hypothesis": "Updated: If we focus on segment B (not A), then conversion improves because ABCD analysis shows B has higher past-behavior signal"
+  }
+}
+```
+
+### Adjustment Allowed Fields Whitelist
+
+| target_table | Allowed fields |
+|-------------|---------------|
+| `goals` | `status`, `title`, `hypothesis`, `definition_of_done`, `type`, `need_id` |
+| `habits` | `is_active`, `name`, `tier`, `hypothesis`, `trigger`, `mvv`, `full_version` |
+| `swot_entries` | `status`, `impact`, `content`, `title` |
 
 ## Context Persistence
 
