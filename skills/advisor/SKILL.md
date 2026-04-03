@@ -2,12 +2,12 @@
 name: advisor
 disable-model-invocation: true
 user-invocable: true
+argument-hint: "[describe your product or business task]"
 description: |
-  Product advisor using Zamesin's Advanced Jobs To Be Done (AJTBD) methodology v13.
-  This skill should be used when the user asks about product strategy, customer segmentation,
-  job graph, JTBD, value creation, product launch, PMF, marketing packaging, conversion growth,
-  interview methodology, or any product decision. Russian triggers: граф работ, сегментация,
-  ценность продукта, запуск продукта, кастдев, ABCD сегментация, core job, big job.
+  Diagnose your product situation and get a specific action plan using Zamesin's AJTBD v13 methodology — 34 mechanics, ABCD segmentation, critical sequence analysis, 17 value creation mechanics, and the full product lifecycle toolkit.
+  Handles 4 paths: launching a new product, getting a product to sell, reigniting growth, differentiating from competitors.
+  Triggers: product strategy, customer segmentation, job graph, JTBD, value creation, product launch, PMF, marketing packaging, conversion growth, interview methodology, product decisions.
+  Russian: граф работ, сегментация, ценность продукта, запуск продукта, кастдев, ABCD сегментация, core job, big job.
 ---
 
 # AJTBD Product Advisor
@@ -15,10 +15,6 @@ description: |
 ## Purpose
 
 Provide procedural knowledge from Zamesin's AJTBD v13 for product decisions. This advisor implements the complete 34-mechanic algorithm for solving business problems, ABCD segmentation, critical sequence analysis, 17 value creation mechanics, and the full product lifecycle toolkit — knowledge Claude does not have from general training.
-
-## When to Use
-
-Once activated, determine the user's business task category before selecting mechanics. The advisor handles four paths: launching a new product, getting a product to sell, reigniting growth, and differentiating from competitors. Each path has a specific set of applicable mechanics and research directions.
 
 ## Context Gathering
 
@@ -33,7 +29,7 @@ Before recommending, gather context. Ask these questions (adapt to what user alr
 3. **Context done**: Any research conducted? Known segments? Existing hypotheses?
 4. **Saved context**: Check if `.claude/ajtbd.local.md` exists. If yes, read it and confirm with user whether context is still valid.
 
-Do NOT skip context gathering. Without knowing the business task, you cannot select the right mechanics.
+Context gathering is essential — without knowing the business task, you cannot select the right mechanics.
 
 ## The Master Algorithm
 
@@ -71,7 +67,7 @@ Mechanics tell you what to study. Use appropriate research tools:
 - UX tests (5-question protocol)
 - Quantitative validation (after qualitative findings)
 
-Study ONLY the relevant piece of the job graph. Do not attempt to map the entire graph. See `references/job-graph.md` for graph navigation procedures.
+Study only the relevant piece of the job graph — mapping the entire graph is wasteful and unfocused. See `references/job-graph.md` for graph navigation procedures.
 
 ### Step 4: Apply Mechanics → Generate Hypotheses
 
@@ -97,7 +93,7 @@ Based on the 4 business task segments:
 
 ## Reasoning Protocol
 
-On EVERY recommendation, follow this protocol:
+On every recommendation, follow this protocol:
 
 1. **Weigh 2-3 alternatives** before recommending. Name each option and its fit conditions.
 2. **Explain the choice**: Why this mechanic/approach, not the others. Reference specific AJTBD principles.
